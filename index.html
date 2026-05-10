@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <title>STS2 StandardActMap 可视化</title>
+  <style>
+    :root {
+      --bg: #171410;
+      --panel: #241f19;
+      --panel-2: #2f2921;
+      --line: #4e4437;
+      --text: #f2eadc;
+      --muted: #baa995;
+      --accent: #d8aa5a;
+      --danger: #f07f6f;
+      --ok: #7bcf9b;
+      --path: #8b7658;
+      --path-hi: #e2bc76;
+      --node: #3a3128;
+      --shadow: rgba(0, 0, 0, .34);
+      font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 30% 0%, rgba(199, 142, 71, .16), transparent 32rem),
+        linear-gradient(180deg, #18130f 0%, #211b14 48%, #12100d 100%);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    aside {
+      border-right: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(28, 24, 19, .92);
+      padding: 18px;
+      box-shadow: 12px 0 32px var(--shadow);
+      z-index: 2;
+    }
+
+    main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      margin-bottom: 18px;
+    }
+
+    .control {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 13px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    select,
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0 10px;
+      outline: none;
+      font: inherit;
+    }
+
+    select:focus,
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(216, 170, 90, .18);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .checks {
+      display: grid;
+      gap: 8px;
+      margin: 14px 0 18px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .03);
+      border-radius: 8px;
+    }
+
+    .check {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .check input { accent-color: var(--accent); }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 7px;
+      min-height: 40px;
+      padding: 8px 12px;
+      background: linear-gradient(180deg, #e0b766, #b9843e);
+      color: #1c1309;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 18px rgba(0, 0, 0, .24);
+    }
+
+    button.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 18px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .32);
+    }
+
+    .status {
+      padding: 12px 18px;
+      display: grid;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(16, 14, 11, .7);
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .stat {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .04);
+      border-radius: 6px;
+      padding: 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .error {
+      display: none;
+      white-space: pre-wrap;
+      color: #ffe7e2;
+      background: rgba(170, 45, 28, .28);
+      border: 1px solid rgba(240, 127, 111, .55);
+      border-radius: 7px;
+      padding: 10px;
+      font: 12px/1.45 Consolas, monospace;
+    }
+
+    .error.show { display: block; }
+
+    .stage-wrap {
+      min-height: 0;
+      overflow: auto;
+      padding: 22px;
+    }
+
+    .stage {
+      position: relative;
+      width: min(1080px, 100%);
+      min-width: 720px;
+      height: 860px;
+      margin: 0 auto;
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(167, 138, 103, .18), rgba(40, 35, 29, .12)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 14.285%),
+        linear-gradient(180deg, #2b241c 0%, #18140f 100%);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, .34);
+      overflow: hidden;
+    }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .node {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 2px solid rgba(255, 255, 255, .2);
+      background: var(--node);
+      color: var(--text);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, .32);
+      font-size: 20px;
+      user-select: none;
+    }
+
+    .node small {
+      position: absolute;
+      top: 47px;
+      color: rgba(242, 234, 220, .58);
+      font-size: 10px;
+      font-family: Consolas, monospace;
+    }
+
+    .node.Ancient { background: #47351d; color: #f4c86f; }
+    .node.Boss { background: #5b1f1f; color: #ffd1c9; }
+    .node.Monster { background: #473426; color: #f0dcc4; }
+    .node.Elite { background: #633121; color: #ffd28c; }
+    .node.RestSite { background: #285149; color: #b8ffe8; }
+    .node.Treasure { background: #5f4b1f; color: #ffe189; }
+    .node.Shop { background: #254966; color: #c7e7ff; }
+    .node.Unknown { background: #432d61; color: #ead5ff; }
+    .node.Unassigned { background: #333; color: #aaa; }
+
+    .path {
+      stroke: var(--path);
+      stroke-width: 4;
+      stroke-linecap: round;
+      opacity: .78;
+    }
+
+    .row-label {
+      position: absolute;
+      left: 12px;
+      color: rgba(242, 234, 220, .35);
+      font-size: 11px;
+      transform: translateY(-50%);
+      font-family: Consolas, monospace;
+    }
+
+    .source {
+      margin-top: 18px;
+      color: rgba(242, 234, 220, .58);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      aside { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+      .stage-wrap { padding: 14px; }
+      .stage { min-width: 680px; height: 820px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <h1>StandardActMap</h1>
+      <div class="subtitle">按反编译 C# 方法顺序移植：生成路径、分配点类型、剪枝修复、居中扩散和拉直路径。</div>
+
+      <div class="control">
+        <label for="act">章节</label>
+        <select id="act">
+          <option value="Overgrowth">Overgrowth / 第一章</option>
+          <option value="Underdocks">Underdocks / 第一章变体</option>
+          <option value="Hive">Hive / 第二章</option>
+          <option value="Glory">Glory / 第三章</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="control">
+          <label for="seed">种子</label>
+          <input id="seed" type="number" min="0" max="2147483647" value="123456" />
+        </div>
+        <div class="control">
+          <label for="counter">跳过随机数</label>
+          <input id="counter" type="number" min="0" max="9999" value="0" />
+        </div>
+      </div>
+
+      <div class="checks">
+        <label class="check"><input id="multiplayer" type="checkbox" /> 多人模式少一间房</label>
+        <label class="check"><input id="replaceTreasure" type="checkbox" /> 倒数第 7 层宝箱改精英</label>
+        <label class="check"><input id="secondBoss" type="checkbox" /> 第二 Boss 节点</label>
+        <label class="check"><input id="enablePruning" type="checkbox" checked /> 启用剪枝修复</label>
+        <label class="check"><input id="showCoords" type="checkbox" checked /> 显示坐标</label>
+      </div>
+
+      <div class="button-row">
+        <button id="generate">生成</button>
+        <button class="secondary" id="randomSeed">随机种子</button>
+      </div>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="source">
+        源码对照：StandardActMap.cs、MapPathPruning.cs、MapPostProcessing.cs、MapPoint.cs。
+      </div>
+    </aside>
+
+    <main>
+      <div class="status">
+        <div class="stats" id="stats"></div>
+        <div class="error" id="error"></div>
+      </div>
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <svg id="paths" aria-hidden="true"></svg>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+
+    const Type = Object.freeze({
+      Unassigned: 0,
+      Unknown: 1,
+      Shop: 2,
+      Treasure: 3,
+      RestSite: 4,
+      Monster: 5,
+      Elite: 6,
+      Boss: 7,
+      Ancient: 8
+    });
+
+    const TypeName = Object.freeze(Object.fromEntries(Object.entries(Type).map(([k, v]) => [v, k])));
+    const TypeIcon = Object.freeze({
+      Unassigned: "?",
+      Unknown: "?",
+      Shop: "$",
+      Treasure: "T",
+      RestSite: "R",
+      Monster: "M",
+      Elite: "E",
+      Boss: "B",
+      Ancient: "A"
+    });
+
+    const LegendColor = Object.freeze({
+      Ancient: "#f4c86f",
+      Monster: "#f0dcc4",
+      Elite: "#ffd28c",
+      RestSite: "#b8ffe8",
+      Treasure: "#ffe189",
+      Shop: "#c7e7ff",
+      Unknown: "#ead5ff",
+      Boss: "#ffd1c9"
+    });
+
+    const LOWER_RESTRICTIONS = new Set([Type.RestSite, Type.Elite]);
+    const UPPER_RESTRICTIONS = new Set([Type.RestSite]);
+    const PARENT_RESTRICTIONS = new Set([Type.Elite, Type.RestSite, Type.Treasure, Type.Shop]);
+    const CHILD_RESTRICTIONS = new Set([Type.Elite, Type.RestSite, Type.Treasure, Type.Shop]);
+    const SIBLING_RESTRICTIONS = new Set([Type.RestSite, Type.Monster, Type.Unknown, Type.Elite, Type.Shop]);
+
+    class DotNetRandom {
+      constructor(seed) {
+        const mbig = 2147483647;
+        const mseed = 161803398;
+        let subtraction = seed === -2147483648 ? 2147483647 : Math.abs(seed | 0);
+        let mj = mseed - subtraction;
+        if (mj < 0) mj += mbig;
+        this.seedArray = new Array(56).fill(0);
+        this.seedArray[55] = mj;
+        let mk = 1;
+        for (let i = 1; i < 55; i++) {
+          const ii = (21 * i) % 55;
+          this.seedArray[ii] = mk;
+          mk = mj - mk;
+          if (mk < 0) mk += mbig;
+          mj = this.seedArray[ii];
+        }
+        for (let k = 1; k < 5; k++) {
+          for (let i = 1; i < 56; i++) {
+            this.seedArray[i] -= this.seedArray[1 + (i + 30) % 55];
+            if (this.seedArray[i] < 0) this.seedArray[i] += mbig;
+          }
+        }
+        this.inext = 0;
+        this.inextp = 21;
+      }
+
+      internalSample() {
+        let locINext = this.inext + 1;
+        if (locINext >= 56) locINext = 1;
+        let locINextp = this.inextp + 1;
+        if (locINextp >= 56) locINextp = 1;
+        let retVal = this.seedArray[locINext] - this.seedArray[locINextp];
+        if (retVal === 2147483647) retVal--;
+        if (retVal < 0) retVal += 2147483647;
+        this.seedArray[locINext] = retVal;
+        this.inext = locINext;
+        this.inextp = locINextp;
+        return retVal;
+      }
+
+      sample() {
+        return this.internalSample() * (1.0 / 2147483647);
+      }
+
+      next(maxExclusive) {
+        if (maxExclusive === undefined) return this.internalSample();
+        return Math.floor(this.sample() * maxExclusive);
+      }
+
+      nextRange(minInclusive, maxExclusive) {
+        return Math.floor(this.sample() * (maxExclusive - minInclusive)) + minInclusive;
+      }
+
+      nextDouble() {
+        return this.sample();
+      }
+    }
+
+    class Rng {
+      constructor(seed, counter = 0) {
+        this.seed = seed >>> 0;
+        this.counter = 0;
+        this.random = new DotNetRandom(this.seed | 0);
+        this.fastForwardCounter(counter);
+      }
+
+      fastForwardCounter(target) {
+        if (target < this.counter) throw new Error("Cannot fast-forward to a lower counter.");
+        while (this.counter < target) {
+          this.counter++;
+          this.random.next();
+        }
+      }
+
+      nextInt(minOrMax = 2147483647, maxExclusive = null) {
+        this.counter++;
+        if (maxExclusive === null) return this.random.next(minOrMax);
+        if (minOrMax >= maxExclusive) throw new Error("Minimum must be lower than maximum.");
+        return this.random.nextRange(minOrMax, maxExclusive);
+      }
+
+      nextGaussianInt(mean, stdDev, min, max) {
+        let out;
+        do {
+          const d = 1.0 - this.random.nextDouble();
+          const n = 1.0 - this.random.nextDouble();
+          const gaussian = Math.sqrt(-2.0 * Math.log(d)) * Math.sin(Math.PI * 2.0 * n);
+          out = Math.round(mean + stdDev * gaussian);
+        } while (out < min || out > max);
+        return out;
+      }
+
+      shuffle(list) {
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = this.nextInt(i + 1);
+          [list[i], list[j]] = [list[j], list[i]];
+        }
+        return list;
+      }
+
+      stableShuffle(list, comparer = compareNatural) {
+        list.sort(comparer);
+        return this.shuffle(list);
+      }
+
+      unstableShuffle(list) {
+        return this.shuffle(list);
+      }
+    }
+
+    function compareNatural(a, b) {
+      if (a instanceof MapPoint && b instanceof MapPoint) return compareMapPoint(a, b);
+      if (Array.isArray(a) && Array.isArray(b)) return compareSegment(a, b);
+      return String(a).localeCompare(String(b), "en");
+    }
+
+    function compareMapPoint(a, b) {
+      return (a.coord.col - b.coord.col) || (a.coord.row - b.coord.row);
+    }
+
+    function compareSegment(a, b) {
+      const keyA = a.map(p => `${p.coord.col},${p.coord.row}`).join("|");
+      const keyB = b.map(p => `${p.coord.col},${p.coord.row}`).join("|");
+      return keyA.localeCompare(keyB, "en");
+    }
+
+    class MapPoint {
+      constructor(col, row) {
+        this.coord = { col, row };
+        this.parents = new Set();
+        this.children = new Set();
+        this.pointType = Type.Unassigned;
+        this.canBeModified = true;
+      }
+
+      addChildPoint(child) {
+        this.children.add(child);
+        child.parents.add(this);
+      }
+
+      removeChildPoint(child) {
+        this.children.delete(child);
+        child.parents.delete(this);
+      }
+
+      toString() {
+        return `Point[${this.coord.col},${this.coord.row}]`;
+      }
+    }
+
+    class TypeCounts {
+      constructor({ unknowns, rests, elites = 5, shops = 3, ignoreRules = [] }) {
+        this.numOfUnknowns = unknowns;
+        this.numOfRests = rests;
+        this.numOfElites = elites;
+        this.numOfShops = shops;
+        this.ignoreRules = new Set(ignoreRules);
+      }
+
+      shouldIgnore(type) {
+        return this.ignoreRules.has(type);
+      }
+    }
+
+    const ACTS = Object.freeze({
+      Overgrowth: {
+        name: "Overgrowth",
+        baseRooms: 15,
+        mapBg: "#A78A67",
+        counts(rng) {
+          return new TypeCounts({
+            rests: rng.nextGaussianInt(7, 1, 6, 7),
+            unknowns: standardRandomUnknownCount(rng)
+          });
+        }
+      },
+      Underdocks: {
+        name: "Underdocks",
+        baseRooms: 15,
+        mapBg: "#88715f",
+        counts(rng) {
+          return new TypeCounts({
+            rests: rng.nextGaussianInt(7, 1, 6, 7),
+            unknowns: standardRandomUnknownCount(rng)
+          });
+        }
+      },
+      Hive: {
+        name: "Hive",
+        baseRooms: 14,
+        mapBg: "#9B9562",
+        counts(rng) {
+          return new TypeCounts({
+            rests: rng.nextGaussianInt(6, 1, 6, 7),
+            unknowns: standardRandomUnknownCount(rng) - 1
+          });
+        }
+      },
+      Glory: {
+        name: "Glory",
+        baseRooms: 13,
+        mapBg: "#819A97",
+        counts(rng) {
+          return new TypeCounts({
+            rests: rng.nextInt(5, 7),
+            unknowns: standardRandomUnknownCount(rng) - 1
+          });
+        }
+      }
+    });
+
+    function standardRandomUnknownCount(rng) {
+      return rng.nextGaussianInt(12, 1, 10, 14);
+    }
+
+    class StandardActMap {
+      constructor({ rng, act, isMultiplayer, replaceTreasureWithElites, hasSecondBoss, enablePruning }) {
+        this.width = 7;
+        this.mapLength = act.baseRooms - (isMultiplayer ? 1 : 0) + 1;
+        this.rng = rng;
+        this.pointTypeCounts = act.counts(rng);
+        this.shouldReplaceTreasureWithElites = replaceTreasureWithElites;
+        this.grid = Array.from({ length: this.width }, () => Array(this.mapLength).fill(null));
+        this.startMapPoints = new Set();
+        this.bossMapPoint = new MapPoint(Math.floor(this.width / 2), this.getRowCount());
+        this.startingMapPoint = new MapPoint(Math.floor(this.width / 2), 0);
+        this.secondBossMapPoint = hasSecondBoss ? new MapPoint(Math.floor(this.width / 2), this.getRowCount() + 1) : null;
+        this.generateMap();
+        this.assignPointTypes();
+        if (enablePruning) {
+          pruneAndRepair(this.grid, this.startMapPoints, this, this.pointTypeCounts, this.rng, (type, point) => this.isValidPointType(type, point));
+        }
+        this.grid = centerGrid(this.grid);
+        this.grid = spreadAdjacentMapPoints(this.grid);
+        this.grid = straightenPaths(this.grid);
+      }
+
+      getColumnCount() {
+        return this.grid.length;
+      }
+
+      getRowCount() {
+        return this.grid[0].length;
+      }
+
+      getPoint(col, row) {
+        if (col === this.bossMapPoint.coord.col && row === this.bossMapPoint.coord.row) return this.bossMapPoint;
+        if (this.secondBossMapPoint && col === this.secondBossMapPoint.coord.col && row === this.secondBossMapPoint.coord.row) return this.secondBossMapPoint;
+        if (col === this.startingMapPoint.coord.col && row === this.startingMapPoint.coord.row) return this.startingMapPoint;
+        if (col >= 0 && col < this.getColumnCount() && row >= 0 && row < this.getRowCount()) return this.grid[col][row];
+        return null;
+      }
+
+      getOrCreatePoint(col, row) {
+        let point = this.getPoint(col, row);
+        if (point) return point;
+        point = new MapPoint(col, row);
+        this.grid[col][row] = point;
+        return point;
+      }
+
+      getAllMapPoints() {
+        const points = [];
+        for (let c = 0; c < this.getColumnCount(); c++) {
+          for (let r = 0; r < this.getRowCount(); r++) {
+            if (this.grid[c][r]) points.push(this.grid[c][r]);
+          }
+        }
+        return points;
+      }
+
+      pathGenerate(startingPoint) {
+        let mapPoint = startingPoint;
+        while (mapPoint.coord.row < this.mapLength - 1) {
+          const coord = this.generateNextCoord(mapPoint);
+          const next = this.getOrCreatePoint(coord.col, coord.row);
+          mapPoint.addChildPoint(next);
+          mapPoint = next;
+        }
+      }
+
+      generateNextCoord(current) {
+        const col = current.coord.col;
+        const left = Math.max(0, col - 1);
+        const right = Math.min(col + 1, 6);
+        const offsets = this.rng.stableShuffle([-1, 0, 1], (a, b) => a - b);
+        for (const offset of offsets) {
+          const row = current.coord.row + 1;
+          const targetCol = offset === -1 ? left : offset === 0 ? col : right;
+          if (!this.hasInvalidCrossover(current, targetCol)) return { col: targetCol, row };
+        }
+        throw new Error(`Cannot find next node: seed=${this.rng.seed}`);
+      }
+
+      hasInvalidCrossover(current, targetX) {
+        const delta = targetX - current.coord.col;
+        if (delta === 0 || delta === 7) return false;
+        const sameRowPoint = this.grid[targetX][current.coord.row];
+        if (!sameRowPoint) return false;
+        for (const child of sameRowPoint.children) {
+          const otherDelta = child.coord.col - sameRowPoint.coord.col;
+          if (otherDelta === -delta) return true;
+        }
+        return false;
+      }
+
+      generateMap() {
+        for (let i = 0; i < 7; i++) {
+          let start = this.getOrCreatePoint(this.rng.nextInt(0, 7), 1);
+          if (i === 1) {
+            while (this.startMapPoints.has(start)) start = this.getOrCreatePoint(this.rng.nextInt(0, 7), 1);
+          }
+          this.startMapPoints.add(start);
+          this.pathGenerate(start);
+        }
+        forEachInRow(this.grid, this.getRowCount() - 1, p => p.addChildPoint(this.bossMapPoint));
+        if (this.secondBossMapPoint) this.bossMapPoint.addChildPoint(this.secondBossMapPoint);
+        forEachInRow(this.grid, 1, p => this.startingMapPoint.addChildPoint(p));
+      }
+
+      assignPointTypes() {
+        forEachInRow(this.grid, this.getRowCount() - 1, p => {
+          p.pointType = Type.RestSite;
+          p.canBeModified = false;
+        });
+        forEachInRow(this.grid, this.getRowCount() - 7, p => {
+          p.pointType = this.shouldReplaceTreasureWithElites ? Type.Elite : Type.Treasure;
+          p.canBeModified = false;
+        });
+        forEachInRow(this.grid, 1, p => {
+          p.pointType = Type.Monster;
+          p.canBeModified = false;
+        });
+        const queue = [];
+        for (let i = 0; i < this.pointTypeCounts.numOfRests; i++) queue.push(Type.RestSite);
+        for (let i = 0; i < this.pointTypeCounts.numOfShops; i++) queue.push(Type.Shop);
+        for (let i = 0; i < this.pointTypeCounts.numOfElites; i++) queue.push(Type.Elite);
+        for (let i = 0; i < this.pointTypeCounts.numOfUnknowns; i++) queue.push(Type.Unknown);
+        this.assignRemainingTypesToRandomPoints(queue);
+        for (const p of this.getAllMapPoints()) {
+          if (p.pointType === Type.Unassigned) p.pointType = Type.Monster;
+        }
+        this.bossMapPoint.pointType = Type.Boss;
+        this.startingMapPoint.pointType = Type.Ancient;
+        if (this.secondBossMapPoint) this.secondBossMapPoint.pointType = Type.Boss;
+      }
+
+      assignRemainingTypesToRandomPoints(queue) {
+        for (let i = 0; i < 3; i++) {
+          if (queue.length <= 0) break;
+          const points = this.getAllMapPoints().filter(p => p.pointType === Type.Unassigned);
+          this.rng.stableShuffle(points, compareMapPoint);
+          for (const point of points) {
+            if (queue.length === 0) break;
+            point.pointType = this.getNextValidPointType(queue, point);
+          }
+        }
+      }
+
+      getNextValidPointType(queue, mapPoint) {
+        const tries = queue.length;
+        for (let i = 0; i < tries; i++) {
+          const type = queue.shift();
+          if (this.pointTypeCounts.shouldIgnore(type)) return type;
+          if (this.isValidPointType(type, mapPoint)) return type;
+          queue.push(type);
+        }
+        return Type.Unassigned;
+      }
+
+      isValidPointType(pointType, mapPoint) {
+        return this.isValidForUpper(pointType, mapPoint)
+          && this.isValidForLower(pointType, mapPoint)
+          && isValidWithParents(pointType, mapPoint)
+          && isValidWithChildren(pointType, mapPoint)
+          && isValidWithSiblings(pointType, mapPoint);
+      }
+
+      isValidForLower(pointType, mapPoint) {
+        return mapPoint.coord.row < 6 ? !LOWER_RESTRICTIONS.has(pointType) : true;
+      }
+
+      isValidForUpper(pointType, mapPoint) {
+        return mapPoint.coord.row >= this.mapLength - 3 ? !UPPER_RESTRICTIONS.has(pointType) : true;
+      }
+    }
+
+    function forEachInRow(grid, rowIndex, processor) {
+      for (let c = 0; c < grid.length; c++) {
+        const p = grid[c][rowIndex];
+        if (p) processor(p);
+      }
+    }
+
+    function isValidWithParents(pointType, mapPoint) {
+      if (!PARENT_RESTRICTIONS.has(pointType)) return true;
+      for (const p of [...mapPoint.parents, ...mapPoint.children]) {
+        if (p.pointType === pointType) return false;
+      }
+      return true;
+    }
+
+    function isValidWithChildren(pointType, mapPoint) {
+      if (!CHILD_RESTRICTIONS.has(pointType)) return true;
+      for (const p of mapPoint.children) {
+        if (p.pointType === pointType) return false;
+      }
+      return true;
+    }
+
+    function isValidWithSiblings(pointType, mapPoint) {
+      if (!SIBLING_RESTRICTIONS.has(pointType)) return true;
+      for (const sibling of getSiblings(mapPoint)) {
+        if (sibling.pointType === pointType) return false;
+      }
+      return true;
+    }
+
+    function getSiblings(mapPoint) {
+      const out = new Set();
+      for (const parent of mapPoint.parents) {
+        for (const child of parent.children) {
+          if (child !== mapPoint) out.add(child);
+        }
+      }
+      return out;
+    }
+
+    function pruneAndRepair(grid, startMapPoints, map, pointTypeCounts, rng, isValidPointType) {
+      for (let i = 0; i < 3; i++) {
+        pruneDuplicateSegments(grid, startMapPoints, map.startingMapPoint, rng);
+        if (!repairPrunedPointTypes(map, pointTypeCounts, rng, isValidPointType)) break;
+      }
+    }
+
+    function repairPrunedPointTypes(map, pointTypeCounts, rng, isValidPointType) {
+      let changed = false;
+      changed = repairPointType(map, Type.Shop, pointTypeCounts.numOfShops, rng, isValidPointType) || changed;
+      changed = repairPointType(map, Type.Elite, pointTypeCounts.numOfElites, rng, isValidPointType) || changed;
+      changed = repairPointType(map, Type.RestSite, pointTypeCounts.numOfRests, rng, isValidPointType) || changed;
+      changed = repairPointType(map, Type.Unknown, pointTypeCounts.numOfUnknowns, rng, isValidPointType) || changed;
+      return changed;
+    }
+
+    function repairPointType(map, type, targetCount, rng, isValidPointType) {
+      const current = map.getAllMapPoints().filter(p => p.pointType === type).length;
+      let missing = targetCount - current;
+      if (missing <= 0) return false;
+      let changed = false;
+      const candidates = map.getAllMapPoints().filter(p => p.pointType === Type.Monster && p.canBeModified);
+      rng.stableShuffle(candidates, compareMapPoint);
+      for (const p of candidates) {
+        if (missing === 0) break;
+        if (isValidPointType(type, p)) {
+          p.pointType = type;
+          missing--;
+          changed = true;
+        }
+      }
+      return changed;
+    }
+
+    function pruneDuplicateSegments(grid, startMapPoints, startingMapPoint, rng) {
+      let count = 0;
+      let matchingSegments = findMatchingSegments(startingMapPoint);
+      while (prunePaths(grid, startMapPoints, matchingSegments, rng)) {
+        count++;
+        if (count > 50) throw new Error(`Unable to prune matching segments in ${count} iterations`);
+        matchingSegments = findMatchingSegments(startingMapPoint);
+      }
+    }
+
+    function findMatchingSegments(startingMapPoint) {
+      const paths = findAllPaths(startingMapPoint);
+      const segments = new Map();
+      for (const path of paths) addSegmentsToDictionary(path, segments);
+      return [...segments.values()].filter(list => list.length > 1);
+    }
+
+    function findAllPaths(current) {
+      if (current.pointType === Type.Boss) return [[current]];
+      const paths = [];
+      for (const child of current.children) {
+        for (const tail of findAllPaths(child)) paths.push([current, ...tail]);
+      }
+      return paths;
+    }
+
+    function addSegmentsToDictionary(path, segments) {
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!isValidSegmentStartMapPoint(path[i])) continue;
+        for (let j = 2; j < path.length - i; j++) {
+          const end = path[i + j];
+          if (!isValidSegmentEndMapPoint(end)) continue;
+          const segment = path.slice(i, i + j + 1);
+          const key = generateSegmentKey(segment);
+          const existing = segments.get(key);
+          if (!existing) {
+            segments.set(key, [segment]);
+          } else if (!existing.some(s => overlappingSegment(s, segment))) {
+            existing.push(segment);
+          }
+        }
+      }
+    }
+
+    function isValidSegmentStartMapPoint(point) {
+      return point.children.size <= 1 ? point.coord.row === 0 : true;
+    }
+
+    function isValidSegmentEndMapPoint(point) {
+      return point.parents.size >= 2;
+    }
+
+    function generateSegmentKey(segment) {
+      const start = segment[0];
+      const end = segment[segment.length - 1];
+      const prefix = start.coord.row === 0
+        ? `${start.coord.row}-${end.coord.col},${end.coord.row}-`
+        : `${start.coord.col},${start.coord.row}-${end.coord.col},${end.coord.row}-`;
+      return prefix + segment.map(p => p.pointType).join(",");
+    }
+
+    function overlappingSegment(a, b) {
+      if (a.length < 3 || b.length < 3) return false;
+      const max = Math.min(a.length, b.length) - 2;
+      for (let i = 1; i <= max; i++) {
+        if (a[i] === b[i]) return true;
+      }
+      return false;
+    }
+
+    function prunePaths(grid, startMapPoints, matchingSegments, rng) {
+      for (const matchingSegment of matchingSegments) {
+        rng.unstableShuffle(matchingSegment);
+        if (pruneAllButLast(grid, startMapPoints, matchingSegment) !== 0) return true;
+        if (breakAParentChildRelationshipInAnySegment(matchingSegment)) return true;
+      }
+      return false;
+    }
+
+    function pruneAllButLast(grid, startMapPoints, matches) {
+      let count = 0;
+      for (const match of matches) {
+        if (count === matches.length - 1) return count;
+        if (pruneSegment(grid, startMapPoints, match)) count++;
+      }
+      return count;
+    }
+
+    function pruneSegment(grid, startMapPoints, segment) {
+      let changed = false;
+      for (let i = 0; i < segment.length - 1; i++) {
+        const point = segment[i];
+        if (!isInMapForPruning(grid, point)) return true;
+        const hasSingleActiveParent = [...point.parents].some(n => n.children.size === 1 && !isRemoved(grid, n));
+        if (point.children.size > 1 || point.parents.size > 1 || hasSingleActiveParent) continue;
+        const source = segment.slice(i);
+        const hasForwardJunction = source.some(n => n.children.size > 1 && n.parents.size === 1);
+        if (!hasForwardJunction) {
+          if (segment[segment.length - 1].parents.size === 1) return false;
+          const externalSingleParentChild = [...point.children]
+            .filter(c => !segment.includes(c))
+            .some(c => c.parents.size === 1);
+          if (!externalSingleParentChild) {
+            removePoint(grid, startMapPoints, point);
+            changed = true;
+          }
+        }
+      }
+      return changed;
+    }
+
+    function removePoint(grid, startMapPoints, point) {
+      if (grid[point.coord.col] && grid[point.coord.col][point.coord.row] === point) {
+        grid[point.coord.col][point.coord.row] = null;
+      }
+      startMapPoints.delete(point);
+      for (const child of [...point.children]) point.removeChildPoint(child);
+      for (const parent of [...point.parents]) parent.removeChildPoint(point);
+    }
+
+    function isInMapForPruning(grid, point) {
+      const row = point.coord.row;
+      const col = point.coord.col;
+      if (!grid[col] || grid[col][row] == null) {
+        return point.pointType === Type.Ancient || point.pointType === Type.Boss;
+      }
+      return true;
+    }
+
+    function isRemoved(grid, point) {
+      return !grid[point.coord.col] || grid[point.coord.col][point.coord.row] == null;
+    }
+
+    function breakAParentChildRelationshipInAnySegment(matches) {
+      for (const match of matches) {
+        if (breakAParentChildRelationshipInSegment(match)) return true;
+      }
+      return false;
+    }
+
+    function breakAParentChildRelationshipInSegment(segment) {
+      let changed = false;
+      for (let i = 0; i < segment.length - 1; i++) {
+        const point = segment[i];
+        if (point.children.size >= 2) {
+          const child = segment[i + 1];
+          if (child.parents.size !== 1) {
+            point.removeChildPoint(child);
+            changed = true;
+          }
+        }
+      }
+      return changed;
+    }
+
+    function centerGrid(grid) {
+      const width = grid.length;
+      const height = grid[0].length;
+      const leftEmpty = isColumnEmpty(grid, 0) && isColumnEmpty(grid, 1);
+      const rightEmpty = isColumnEmpty(grid, width - 1) && isColumnEmpty(grid, width - 2);
+      let offset = 0;
+      if (leftEmpty && !rightEmpty) offset = -1;
+      else if (!leftEmpty && rightEmpty) offset = 1;
+      if (offset === 0) return grid;
+      if (offset > 0) {
+        for (let r = 0; r < height; r++) {
+          for (let c = width - 1; c >= 0; c--) {
+            const point = grid[c][r];
+            grid[c][r] = null;
+            const next = c + offset;
+            if (next < width) {
+              grid[next][r] = point;
+              if (point) point.coord.col = next;
+            }
+          }
+        }
+      } else {
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            const point = grid[c][r];
+            grid[c][r] = null;
+            const next = c + offset;
+            if (next >= 0) {
+              grid[next][r] = point;
+              if (point) point.coord.col = next;
+            }
+          }
+        }
+      }
+      return grid;
+    }
+
+    function isColumnEmpty(grid, col) {
+      for (let r = 0; r < grid[0].length; r++) {
+        if (grid[col][r]) return false;
+      }
+      return true;
+    }
+
+    function getNeighborAllowedPositions(column, totalColumns) {
+      const out = new Set();
+      for (let i = -1; i <= 1; i++) {
+        const pos = column + i;
+        if (pos >= 0 && pos < totalColumns) out.add(pos);
+      }
+      return out;
+    }
+
+    function intersectSet(a, b) {
+      for (const item of [...a]) {
+        if (!b.has(item)) a.delete(item);
+      }
+      return a;
+    }
+
+    function getAllowedPositions(node, totalColumns) {
+      const allowed = new Set(Array.from({ length: totalColumns }, (_, i) => i));
+      for (const parent of node.parents) intersectSet(allowed, getNeighborAllowedPositions(parent.coord.col, totalColumns));
+      for (const child of node.children) intersectSet(allowed, getNeighborAllowedPositions(child.coord.col, totalColumns));
+      return allowed;
+    }
+
+    function spreadAdjacentMapPoints(grid) {
+      const width = grid.length;
+      const height = grid[0].length;
+      for (let r = 0; r < height; r++) {
+        const rowNodes = [];
+        for (let c = 0; c < width; c++) if (grid[c][r]) rowNodes.push(grid[c][r]);
+        let changed;
+        do {
+          changed = false;
+          for (const node of rowNodes) {
+            const col = node.coord.col;
+            const allowed = getAllowedPositions(node, width);
+            let bestCol = col;
+            let bestGap = computeGap(col, rowNodes, node);
+            for (const candidate of allowed) {
+              if (candidate === col) continue;
+              if (grid[candidate][r] !== null && grid[candidate][r] !== node) continue;
+              const gap = computeGap(candidate, rowNodes, node);
+              if (gap > bestGap) {
+                bestCol = candidate;
+                bestGap = gap;
+              }
+            }
+            if (bestCol !== col) {
+              grid[col][r] = null;
+              grid[bestCol][r] = node;
+              node.coord.col = bestCol;
+              changed = true;
+            }
+          }
+        } while (changed);
+      }
+      return grid;
+    }
+
+    function computeGap(candidateCol, rowNodes, currentNode) {
+      let gap = Number.MAX_SAFE_INTEGER;
+      for (const node of rowNodes) {
+        if (node !== currentNode) gap = Math.min(gap, Math.abs(candidateCol - node.coord.col));
+      }
+      return gap;
+    }
+
+    function straightenPaths(grid) {
+      const width = grid.length;
+      const height = grid[0].length;
+      for (let r = 0; r < height; r++) {
+        for (let c = 0; c < width; c++) {
+          const point = grid[c][r];
+          if (!point || point.parents.size !== 1 || point.children.size !== 1) continue;
+          const parent = [...point.parents][0];
+          const child = [...point.children][0];
+          const isLeftPeak = point.coord.col < child.coord.col && point.coord.col < parent.coord.col;
+          const isRightPeak = point.coord.col > child.coord.col && point.coord.col > parent.coord.col;
+          if (isLeftPeak && c < width - 1) {
+            const next = c + 1;
+            if (grid[next][r] === null) {
+              point.coord.col = next;
+              grid[c][r] = null;
+              grid[next][r] = point;
+            }
+          }
+          if (isRightPeak && c > 0) {
+            const next = c - 1;
+            if (grid[next][r] === null) {
+              point.coord.col = next;
+              grid[c][r] = null;
+              grid[next][r] = point;
+            }
+          }
+        }
+      }
+      return grid;
+    }
+
+    function buildMapFromUI() {
+      const act = ACTS[$("#act").value];
+      const seed = clampInt($("#seed").value, 0, 2147483647);
+      const counter = clampInt($("#counter").value, 0, 9999);
+      $("#seed").value = seed;
+      $("#counter").value = counter;
+      const map = new StandardActMap({
+        rng: new Rng(seed, counter),
+        act,
+        isMultiplayer: $("#multiplayer").checked,
+        replaceTreasureWithElites: $("#replaceTreasure").checked,
+        hasSecondBoss: $("#secondBoss").checked,
+        enablePruning: $("#enablePruning").checked
+      });
+      return { map, act, seed };
+    }
+
+    function render({ map, act, seed }) {
+      const stage = $("#stage");
+      const paths = $("#paths");
+      stage.style.background = `linear-gradient(180deg, ${hexWithAlpha(act.mapBg, .25)}, rgba(24,20,15,.92)), repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 14.285%), linear-gradient(180deg, #2b241c 0%, #18140f 100%)`;
+      stage.querySelectorAll(".node,.row-label").forEach(el => el.remove());
+      paths.innerHTML = "";
+
+      const allNodes = [map.startingMapPoint, ...map.getAllMapPoints(), map.bossMapPoint];
+      if (map.secondBossMapPoint) allNodes.push(map.secondBossMapPoint);
+      const positions = new Map();
+      for (const node of allNodes) positions.set(node, pointToPixel(node, map));
+
+      for (let r = 0; r <= map.getRowCount(); r++) {
+        const y = rowToY(r, map);
+        const label = document.createElement("div");
+        label.className = "row-label";
+        label.style.top = `${y}px`;
+        label.textContent = `r${r}`;
+        stage.appendChild(label);
+      }
+
+      for (const node of allNodes) {
+        const from = positions.get(node);
+        for (const child of node.children) {
+          const to = positions.get(child);
+          if (!from || !to) continue;
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", from.x);
+          line.setAttribute("y1", from.y);
+          line.setAttribute("x2", to.x);
+          line.setAttribute("y2", to.y);
+          line.setAttribute("class", "path");
+          paths.appendChild(line);
+        }
+      }
+
+      for (const node of allNodes) {
+        const pos = positions.get(node);
+        const typeName = TypeName[node.pointType];
+        const el = document.createElement("div");
+        el.className = `node ${typeName}`;
+        el.style.left = `${pos.x}px`;
+        el.style.top = `${pos.y}px`;
+        el.title = `${typeName} ${node.toString()} parents=${node.parents.size} children=${node.children.size}`;
+        el.textContent = TypeIcon[typeName];
+        if ($("#showCoords").checked) {
+          const small = document.createElement("small");
+          small.textContent = `${node.coord.col},${node.coord.row}`;
+          el.appendChild(small);
+        }
+        stage.appendChild(el);
+      }
+
+      renderStats(map, act, seed);
+    }
+
+    function pointToPixel(node, map) {
+      const stage = $("#stage");
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      const marginX = 92;
+      const marginTop = 68;
+      const marginBottom = 70;
+      const row = node.coord.row;
+      return {
+        x: marginX + (node.coord.col / 6) * (w - marginX * 2),
+        y: h - marginBottom - (row / (map.getRowCount() + (map.secondBossMapPoint ? 1 : 0))) * (h - marginTop - marginBottom)
+      };
+    }
+
+    function rowToY(row, map) {
+      const stage = $("#stage");
+      const h = stage.clientHeight;
+      const marginTop = 68;
+      const marginBottom = 70;
+      return h - marginBottom - (row / (map.getRowCount() + (map.secondBossMapPoint ? 1 : 0))) * (h - marginTop - marginBottom);
+    }
+
+    function renderStats(map, act, seed) {
+      const nodes = map.getAllMapPoints();
+      const countByType = {};
+      for (const p of nodes) countByType[TypeName[p.pointType]] = (countByType[TypeName[p.pointType]] || 0) + 1;
+      const entries = [
+        `Act ${act.name}`,
+        `Seed ${seed}`,
+        `Rows ${map.getRowCount()}`,
+        `Nodes ${nodes.length}`,
+        `Paths ${findAllPaths(map.startingMapPoint).length}`,
+        `M ${countByType.Monster || 0}`,
+        `E ${countByType.Elite || 0}`,
+        `? ${countByType.Unknown || 0}`,
+        `$ ${countByType.Shop || 0}`,
+        `R ${countByType.RestSite || 0}`,
+        `T ${countByType.Treasure || 0}`
+      ];
+      $("#stats").innerHTML = entries.map(text => `<span class="stat">${escapeHtml(text)}</span>`).join("");
+    }
+
+    function update() {
+      try {
+        clearError();
+        const built = buildMapFromUI();
+        sanityCheck(built.map);
+        render(built);
+      } catch (err) {
+        showError(err);
+      }
+    }
+
+    function sanityCheck(map) {
+      const nodes = map.getAllMapPoints();
+      if (nodes.length === 0) throw new Error("地图没有生成任何普通节点。");
+      if (map.startingMapPoint.children.size === 0) throw new Error("起点没有连接到第一层。");
+      if ([...map.bossMapPoint.parents].length === 0) throw new Error("Boss 没有父节点。");
+      for (const node of nodes) {
+        if (node.coord.row > 1 && node.parents.size === 0) throw new Error(`${node.toString()} 缺少父节点。`);
+        if (node.coord.row < map.getRowCount() - 1 && node.children.size === 0) throw new Error(`${node.toString()} 缺少子节点。`);
+      }
+    }
+
+    function renderLegend() {
+      const items = ["Ancient", "Monster", "Elite", "RestSite", "Treasure", "Shop", "Unknown", "Boss"];
+      $("#legend").innerHTML = items.map(name => (
+        `<span><i class="dot" style="background:${LegendColor[name]}"></i>${name}</span>`
+      )).join("");
+    }
+
+    function clampInt(value, min, max) {
+      const n = Number.parseInt(value, 10);
+      if (!Number.isFinite(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function hexWithAlpha(hex, alpha) {
+      const clean = hex.replace("#", "");
+      const r = parseInt(clean.slice(0, 2), 16);
+      const g = parseInt(clean.slice(2, 4), 16);
+      const b = parseInt(clean.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, ch => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[ch]));
+    }
+
+    function showError(err) {
+      const box = $("#error");
+      box.classList.add("show");
+      box.textContent = err && err.stack ? err.stack : String(err);
+    }
+
+    function clearError() {
+      const box = $("#error");
+      box.classList.remove("show");
+      box.textContent = "";
+    }
+
+    function $(selector) {
+      return document.querySelector(selector);
+    }
+
+    window.addEventListener("error", event => showError(event.error || event.message));
+    window.addEventListener("unhandledrejection", event => showError(event.reason));
+
+    window.addEventListener("DOMContentLoaded", () => {
+      renderLegend();
+      $("#generate").addEventListener("click", update);
+      $("#randomSeed").addEventListener("click", () => {
+        $("#seed").value = Math.floor(Math.random() * 2147483647);
+        update();
+      });
+      for (const id of ["act", "seed", "counter", "multiplayer", "replaceTreasure", "secondBoss", "enablePruning", "showCoords"]) {
+        $(`#${id}`).addEventListener("change", update);
+      }
+      update();
+    });
+  </script>
+</body>
+</html>
