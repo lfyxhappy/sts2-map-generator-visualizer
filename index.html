@@ -300,11 +300,69 @@
       line-height: 1.55;
     }
 
+    .related-pages {
+      display: grid;
+      grid-template-columns: minmax(0, .72fr) minmax(360px, .64fr);
+      gap: 48px;
+      align-items: start;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      background: rgba(18, 16, 13, .94);
+      padding: 34px 38px 38px;
+    }
+
+    .related-pages h2 {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(30px, 3.6vw, 42px);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .related-pages p {
+      max-width: 560px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .related-links {
+      display: grid;
+      gap: 14px;
+    }
+
+    .related-links a {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .05);
+      padding: 18px 20px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .related-links span {
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .related-links small {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 860px) {
       .app { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, .08); }
       .stage-wrap { padding: 14px; }
       .stage { min-width: 680px; height: 820px; }
+      .related-pages {
+        grid-template-columns: 1fr;
+        padding: 30px 22px 34px;
+      }
     }
   </style>
 </head>
@@ -367,6 +425,23 @@
       </div>
     </main>
   </div>
+
+  <section class="related-pages" aria-labelledby="related-pages-title">
+    <div>
+      <h2 id="related-pages-title">其他 GitHub Pages</h2>
+      <p>继续查看我做的其他《杀戮尖塔 2》相关工具页面。</p>
+    </div>
+    <div class="related-links">
+      <a href="https://lfyxhappy.github.io/STS2mods/">
+        <span>杀戮尖塔2 Mod 合集</span>
+        <small>多人伤害统计、速度调节、重打、中文调试控制台和观者角色</small>
+      </a>
+      <a href="https://lfyxhappy.github.io/STS2-Save-Sync-Tool/">
+        <span>杀戮尖塔2存档同步工具</span>
+        <small>官方档 / Modded 档 progress.save 同步</small>
+      </a>
+    </div>
+  </section>
 
   <script>
     "use strict";
